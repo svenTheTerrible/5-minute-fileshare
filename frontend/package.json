@@ -1,6 +1,7 @@
 {
   "name": "5-minute-fileshare",
   "private": true,
+  "homepage": "./",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

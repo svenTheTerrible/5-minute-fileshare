@@ -203,10 +203,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	staticFs := http.FileServer(http.Dir("./static/"))
 	http.HandleFunc("/ws", wsHandler)
 	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	http.Handle("/", staticFs)
 
 	addr := ":8080"
 	log.Printf("signaling server listening on %s", addr)

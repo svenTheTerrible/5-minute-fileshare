@@ -112,7 +112,7 @@ var (
 	sessionsMu sync.Mutex
 )
 
-func getOrCreate(id string) *Session {
+func mapNewSession(id string) *Session {
 	sessionsMu.Lock()
 	defer sessionsMu.Unlock()
 	if s, ok := sessions[id]; ok {
@@ -150,7 +150,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("connect    session=%s  addr=%s", sessionID, conn.RemoteAddr())
 
 	c := newClient(conn)
-	sess := getOrCreate(sessionID)
+	sess := mapNewSession(sessionID)
 	slot := sess.join(c)
 
 	if slot == -1 {

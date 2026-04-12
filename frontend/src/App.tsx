@@ -1,72 +1,37 @@
-import { useState, type FC } from 'react'
-import {
-  AppBar, Box, Divider, List, ListItemButton, ListItemText,
-  Paper, Toolbar, Typography,
-} from '@mui/material'
-import type { Peer } from './types'
+import { useState, useCallback, type FC } from 'react'
+import { AppBar, Box, Paper, Toolbar, Typography } from '@mui/material'
 import { FileShareSession } from './components/FileShareSession'
 
-// Known peers on the local network.
-// When a signaling server is available, replace this static list with
-// a live roster fetched from the server and wire automatic SDP exchange.
-const PEERS: Peer[] = [
-  { id: '1', name: 'relaxo', ip: '192.168.178.92' },
-  { id: '2', name: 'handy', ip: '192.168.178.81' },
-  { id: '3', name: 'tablet', ip: '192.168.178.84' }
-]
+function initSession(): string {
+  const fromUrl = new URLSearchParams(location.search).get('session')
+  if (fromUrl) return fromUrl
+  const id = crypto.randomUUID()
+  history.replaceState(null, '', `?session=${id}`)
+  return id
+}
 
 export const App: FC = () => {
-  const [selected, setSelected] = useState<Peer | null>(null)
+  const [sessionId, setSessionId] = useState(initSession)
+
+  const newSession = useCallback(() => {
+    const id = crypto.randomUUID()
+    history.replaceState(null, '', `?session=${id}`)
+    setSessionId(id)
+  }, [])
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'grey.100' }}>
       <AppBar position="static" elevation={1}>
         <Toolbar variant="dense">
           <Typography variant="h6">5-Minute File Share</Typography>
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Peer list sidebar */}
-        <Paper
-          square elevation={2}
-          sx={{ width: 220, display: 'flex', flexDirection: 'column', borderRadius: 0 }}
-        >
-          <Typography
-            variant="overline"
-            sx={{ px: 2, py: 1.5, lineHeight: 1, color: 'text.secondary', display: 'block' }}
-          >
-            Peers
-          </Typography>
-          <Divider />
-          <List disablePadding sx={{ flex: 1, overflow: 'auto' }}>
-            {PEERS.map(peer => (
-              <ListItemButton
-                key={peer.id}
-                selected={selected?.id === peer.id}
-                onClick={() => setSelected(peer)}
-              >
-                <ListItemText
-                  primary={peer.name}
-                  secondary={peer.ip}
-                  slotProps={{ primary: { variant: 'body2' }, secondary: { variant: 'caption' } }}
-                />
-              </ListItemButton>
-            ))}
-          </List>
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+        <Paper elevation={2} sx={{ p: 4, width: '100%', maxWidth: 480 }}>
+          {/* key ensures the component (and hook) fully resets when the session changes */}
+          <FileShareSession key={sessionId} sessionId={sessionId} onNewSession={newSession} />
         </Paper>
-
-        {/* Main content */}
-        <Box sx={{ flex: 1, p: 4, overflow: 'auto' }}>
-          {selected ? (
-            // key resets the session component (and hook state) when switching peers
-            <FileShareSession key={selected.id} peer={selected} />
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-              <Typography color="text.secondary">Select a peer to start sharing files</Typography>
-            </Box>
-          )}
-        </Box>
       </Box>
     </Box>
   )

@@ -1,10 +1,10 @@
-import { useState, useRef, type FC, type ChangeEvent } from 'react'
+import { useEffect, useRef, type FC, type ChangeEvent } from 'react'
 import {
-  Alert, Box, Button, CircularProgress, Divider,
+  Alert, Box, Button, CircularProgress,
   LinearProgress, List, ListItem, ListItemText,
-  Paper, TextField, Typography,
+  Paper, Typography,
 } from '@mui/material'
-import type { Peer } from '../types'
+import { QRCodeSVG } from 'qrcode.react'
 import { useWebRTCFileShare } from '../hooks/useWebRTCFileShare'
 
 function toHumanReadableFileSize(n: number): string {
@@ -14,97 +14,91 @@ function toHumanReadableFileSize(n: number): string {
 }
 
 interface Props {
-  peer: Peer
+  sessionId: string
+  onNewSession: () => void
 }
 
-export const FileShareSession: FC<Props> = ({ peer }) => {
-  const {
-    phase, localSDP, transfer, receivedFiles, error,
-    createOffer, receiveOffer, receiveAnswer, sendFile, reset,
-  } = useWebRTCFileShare()
-
-  // Idle-phase UI state
-  const [responding, setResponding] = useState(false)
-  const [offerInput, setOfferInput] = useState('')
-  // offer_ready-phase UI state
-  const [answerInput, setAnswerInput] = useState('')
-
+export const FileShareSession: FC<Props> = ({ sessionId, onNewSession }) => {
+  const { phase, transfer, receivedFiles, error, connect, sendFile, reset } = useWebRTCFileShare()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const copy = (text: string) => { void navigator.clipboard.writeText(text) }
+  // Auto-connect once on mount. sessionId is stable for the lifetime of this
+  // component instance (App uses key={sessionId} to remount on change).
+  useEffect(() => {
+    connect(sessionId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // ── Failed ──────────────────────────────────────────────────────────────────
+  const startNewSession = () => {
+    reset()
+    onNewSession()
+  }
+
+  // The URL encoded in the QR code — scanning it opens the app and auto-joins.
+  const joinUrl = `${location.origin}/?session=${sessionId}`
+
+  // ── Failed ───────────────────────────────────────────────────────────────────
   if (phase === 'failed') {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Alert severity="error">{error ?? 'Connection failed.'}</Alert>
-        <Button variant="contained" onClick={reset} sx={{ alignSelf: 'flex-start' }}>
-          Try Again
+        <Button variant="contained" onClick={startNewSession} sx={{ alignSelf: 'flex-start' }}>
+          New Session
         </Button>
       </Box>
     )
   }
 
-  // ── ICE gathering ───────────────────────────────────────────────────────────
-  if (phase === 'gathering') {
+  // ── Peer left ────────────────────────────────────────────────────────────────
+  if (phase === 'peer_left') {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Alert severity="warning">The other device disconnected.</Alert>
+        <Button variant="contained" onClick={startNewSession} sx={{ alignSelf: 'flex-start' }}>
+          New Session
+        </Button>
+      </Box>
+    )
+  }
+
+  // ── Connecting ───────────────────────────────────────────────────────────────
+  if (phase === 'connecting') {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <CircularProgress size={22} />
-        <Typography>Gathering ICE candidates…</Typography>
+        <Typography>Connecting…</Typography>
       </Box>
     )
   }
 
-  // ── Initiator: offer ready, waiting for answer ───────────────────────────────
-  if (phase === 'offer_ready') {
+  // ── Waiting — show QR code so the other device can scan and join ─────────────
+  if (phase === 'waiting') {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Step 1 — Share this offer with {peer.name}</Typography>
-        <TextField
-          multiline rows={5} value={localSDP} size="small" fullWidth
-          slotProps={{ input: { readOnly: true } }}
-        />
-        <Button variant="outlined" onClick={() => copy(localSDP)} sx={{ alignSelf: 'flex-start' }}>
-          Copy Offer
-        </Button>
-
-        <Divider />
-
-        <Typography variant="h6">Step 2 — Paste their answer</Typography>
-        <TextField
-          multiline rows={5} size="small" fullWidth
-          placeholder="Paste answer SDP here…"
-          value={answerInput}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setAnswerInput(e.target.value)}
-        />
-        <Button
-          variant="contained"
-          disabled={!answerInput.trim()}
-          onClick={() => { void receiveAnswer(answerInput.trim()) }}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Connect
-        </Button>
-      </Box>
-    )
-  }
-
-  // ── Responder: answer ready, waiting for ICE ─────────────────────────────────
-  if (phase === 'answer_ready') {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Share this answer with {peer.name}</Typography>
-        <TextField
-          multiline rows={5} value={localSDP} size="small" fullWidth
-          slotProps={{ input: { readOnly: true } }}
-        />
-        <Button variant="outlined" onClick={() => copy(localSDP)} sx={{ alignSelf: 'flex-start' }}>
-          Copy Answer
-        </Button>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" color="text.secondary">Waiting for connection…</Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        <Typography variant="h6">Scan to join from another device</Typography>
+        <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1, display: 'inline-block' }}>
+          <QRCodeSVG value={joinUrl} size={220} />
         </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all', textAlign: 'center' }}>
+          {joinUrl}
+        </Typography>
+        <Button variant="outlined" size="small" onClick={() => { void navigator.clipboard.writeText(joinUrl) }}>
+          Copy Link
+        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <CircularProgress size={16} />
+          <Typography variant="body2" color="text.secondary">Waiting for other device…</Typography>
+        </Box>
+      </Box>
+    )
+  }
+
+  // ── Handshaking ──────────────────────────────────────────────────────────────
+  if (phase === 'handshaking') {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <CircularProgress size={22} />
+        <Typography>Setting up connection…</Typography>
       </Box>
     )
   }
@@ -114,7 +108,7 @@ export const FileShareSession: FC<Props> = ({ peer }) => {
     const busy = transfer !== null && !transfer.done
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Alert severity="success">Connected to {peer.name} ({peer.ip})</Alert>
+        <Alert severity="success">Connected</Alert>
 
         <Box>
           <input
@@ -179,56 +173,11 @@ export const FileShareSession: FC<Props> = ({ peer }) => {
         )}
 
         <Box>
-          <Button color="error" onClick={reset}>Disconnect</Button>
+          <Button color="error" onClick={startNewSession}>End Session</Button>
         </Box>
       </Box>
     )
   }
 
-  // ── Idle ─────────────────────────────────────────────────────────────────────
-  if (responding) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6">Paste the offer from {peer.name}</Typography>
-        <TextField
-          multiline rows={5} size="small" fullWidth
-          placeholder="Paste offer SDP here…"
-          value={offerInput}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setOfferInput(e.target.value)}
-        />
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="contained"
-            disabled={!offerInput.trim()}
-            onClick={() => { void receiveOffer(offerInput.trim()) }}
-          >
-            Generate Answer
-          </Button>
-          <Button onClick={() => { setResponding(false); setOfferInput('') }}>
-            Cancel
-          </Button>
-        </Box>
-      </Box>
-    )
-  }
-
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="body1">
-        Connect to <strong>{peer.name}</strong> ({peer.ip})
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        No signaling server is available yet, so SDP must be exchanged manually.
-        One peer creates an offer, the other pastes it to generate an answer, then the first peer pastes that answer to complete the handshake.
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-        <Button variant="contained" onClick={() => { void createOffer() }}>
-          Initiate (Create Offer)
-        </Button>
-        <Button variant="outlined" onClick={() => setResponding(true)}>
-          Respond (Paste Offer)
-        </Button>
-      </Box>
-    </Box>
-  )
+  return null
 }

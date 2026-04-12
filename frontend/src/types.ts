@@ -1,21 +1,17 @@
-export interface Peer {
-  id: string
-  name: string
-  ip: string
-}
-
-// idle       – no connection attempt yet
-// gathering  – creating offer or answer, waiting for ICE candidates
-// offer_ready  – initiator: offer is ready to share, waiting to receive answer
-// answer_ready – responder: answer is ready to share, waiting for ICE to connect
-// connected  – data channel is open
-// failed     – connection failed or disconnected
+// idle        – no session yet
+// connecting  – WebSocket connecting to signaling server
+// waiting     – connected, waiting for the other peer to join
+// handshaking – both peers present, exchanging SDP + ICE
+// connected   – WebRTC data channel open, ready to transfer
+// peer_left   – other peer disconnected
+// failed      – unrecoverable error
 export type Phase =
   | 'idle'
-  | 'gathering'
-  | 'offer_ready'
-  | 'answer_ready'
+  | 'connecting'
+  | 'waiting'
+  | 'handshaking'
   | 'connected'
+  | 'peer_left'
   | 'failed'
 
 export interface FileTransfer {

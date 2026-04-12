@@ -7,7 +7,7 @@ import {
 import type { Peer } from '../types'
 import { useWebRTCFileShare } from '../hooks/useWebRTCFileShare'
 
-function fmt(n: number): string {
+function toHumanReadableFileSize(n: number): string {
   if (n < 1024) return `${n} B`
   if (n < 1_048_576) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1_048_576).toFixed(1)} MB`
@@ -139,7 +139,7 @@ export const FileShareSession: FC<Props> = ({ peer }) => {
         {transfer && (
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="body2" gutterBottom>
-              {transfer.direction === 'sending' ? 'Sending' : 'Receiving'}: {transfer.name} ({fmt(transfer.size)})
+              {transfer.direction === 'sending' ? 'Sending' : 'Receiving'}: {transfer.name} ({toHumanReadableFileSize(transfer.size)})
               {transfer.done && ' — Done'}
             </Typography>
             <LinearProgress
@@ -148,7 +148,7 @@ export const FileShareSession: FC<Props> = ({ peer }) => {
               sx={{ mb: 0.5 }}
             />
             <Typography variant="caption" color="text.secondary">
-              {fmt(transfer.transferred)} / {fmt(transfer.size)}
+              {toHumanReadableFileSize(transfer.transferred)} / {toHumanReadableFileSize(transfer.size)}
             </Typography>
           </Paper>
         )}
@@ -159,7 +159,7 @@ export const FileShareSession: FC<Props> = ({ peer }) => {
             <List dense disablePadding>
               {receivedFiles.map(f => (
                 <ListItem key={f.id} disableGutters>
-                  <ListItemText primary={f.name} secondary={fmt(f.size)} />
+                  <ListItemText primary={f.name} secondary={toHumanReadableFileSize(f.size)} />
                   <Button
                     size="small"
                     variant="outlined"

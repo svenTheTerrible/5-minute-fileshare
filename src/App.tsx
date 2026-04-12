@@ -10,8 +10,9 @@ import { FileShareSession } from './components/FileShareSession'
 // When a signaling server is available, replace this static list with
 // a live roster fetched from the server and wire automatic SDP exchange.
 const PEERS: Peer[] = [
-  { id: '1', name: 'relaxo',   ip: '192.168.178.92' },
-  { id: '2', name: 'handy',     ip: '192.168.178.81' },
+  { id: '1', name: 'relaxo', ip: '192.168.178.92' },
+  { id: '2', name: 'handy', ip: '192.168.178.81' },
+  { id: '3', name: 'tablet', ip: '192.168.178.84' }
 ]
 
 export const App: FC = () => {

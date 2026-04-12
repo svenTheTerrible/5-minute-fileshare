@@ -32,9 +32,12 @@ export function useWebRTCFileShare() {
   const rxSizeRef = useRef(0)
 
   const newPC = useCallback(() => {
-    const pc = new RTCPeerConnection({
+    const pc = new RTCPeerConnection(
+   /*   {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    })
+    }
+      */
+  )
     pcRef.current = pc
     pc.addEventListener('connectionstatechange', () => {
       if (pc.connectionState === 'connected') setPhase('connected')
@@ -117,6 +120,7 @@ export function useWebRTCFileShare() {
   /** Initiator: complete handshake by setting the responder's answer. */
   const receiveAnswer = useCallback(async (answerJSON: string) => {
     try {
+      console.log("uff");
       await pcRef.current?.setRemoteDescription(JSON.parse(answerJSON) as RTCSessionDescriptionInit)
     } catch (e) {
       setError(String(e))

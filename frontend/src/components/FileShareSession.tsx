@@ -24,9 +24,8 @@ interface Props {
   fileshare: UseWebRTCFileShare;
 }
 
-export const FileShareSession: FC<Props> = ({ fileshare }) => {
-  const { phase, receivedFiles, transfer, sendFile, reset, connect, error } =
-    fileshare;
+export const Body: FC<Props> = ({ fileshare }) => {
+  const { receivedFiles, transfer, sendFile } = fileshare;
 
   return <>body</>;
 };

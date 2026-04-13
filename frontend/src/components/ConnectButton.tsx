@@ -67,7 +67,15 @@ export const ConnectButton: FC<ConnectButtonProps> = ({
       />
       <Button
         variant="outlined"
-        sx={{ backgroundColor: "white", minHeight: 37, transition: "0.2s" }}
+        sx={{
+          backgroundColor: "transparent",
+          minHeight: 37,
+          transition: "0.2s",
+          ml: 2,
+          border: "2px solid white",
+          color: "white",
+          borderRadius: 16,
+        }}
         onClick={openDialog}
       >
         {renderButtonContent()}

@@ -28,7 +28,18 @@ function awaitIceGathering(pc: RTCPeerConnection): Promise<void> {
   })
 }
 
-export function useWebRTCFileShare() {
+export interface UseWebRTCFileShare{
+   phase: Phase;
+   transfer: FileTransfer | null;
+   receivedFiles: ReceivedFile[];
+   error: string | null;
+   connect: ()=>void;
+   sendFile: (file: File)=>void;
+   reset: ()=>void;
+}
+
+
+export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
   const [phase, setPhase] = useState<Phase>('idle')
   const [transfer, setTransfer] = useState<FileTransfer | null>(null)
   const [receivedFiles, setReceivedFiles] = useState<ReceivedFile[]>([])
@@ -95,7 +106,7 @@ export function useWebRTCFileShare() {
   }, [])
 
   /** Connect to the signaling server with the given session UUID. */
-  const connect = useCallback((sessionId: string) => {
+  const connect = useCallback(() => {
     // Nullify the ref before closing so the close handler on the old WS
     // can detect it has been superseded and skip phase updates.
     const old = wsRef.current

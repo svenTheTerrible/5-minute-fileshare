@@ -1,18 +1,7 @@
-import { useEffect, useRef, type FC, type ChangeEvent } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
-  Typography,
-} from "@mui/material";
-import { QRCodeSVG } from "qrcode.react";
+import { useCallback, type FC } from "react";
+import { Box } from "@mui/material";
 import type { UseWebRTCFileShare } from "../hooks/useWebRTCFileShare";
+import { useDropzone } from "react-dropzone";
 
 function toHumanReadableFileSize(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -25,7 +14,20 @@ interface Props {
 }
 
 export const Body: FC<Props> = ({ fileshare }) => {
-  const { receivedFiles, transfer, sendFile } = fileshare;
+  const { files, sendFiles } = fileshare;
 
-  return <>body</>;
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    sendFiles(acceptedFiles);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  console.log(files);
+
+  return (
+    <Box {...getRootProps()} sx={{ height: "100%" }}>
+      <input {...getInputProps()} />
+      {isDragActive ? "drag active" : "drag not active"}
+    </Box>
+  );
 };

@@ -48,7 +48,7 @@ export interface UseWebRTCFileShare {
   files: TransferFile[];
   error: string | null;
   connect: () => void;
-  sendFile: (file: File) => void;
+  sendFiles: (files: File[]) => void;
   reset: () => void;
 }
 
@@ -223,6 +223,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
   }, [updatePhase, newPC, attachChannel]);
 
   /** Send a file over the open data channel, respecting back-pressure. */
+
   const sendFile = useCallback(async (file: File) => {
     const ch = channelRef.current;
     if (!ch || ch.readyState !== "open") return;
@@ -267,6 +268,26 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
     );
   }, []);
 
+  const sendFiles = useCallback(
+    (newFiles: File[]) => {
+      setFiles((current) => [
+        ...current,
+        ...newFiles.map(
+          (singleNewFile): TransferFile => ({
+            id: crypto.randomUUID(),
+            completion: 0,
+            name: singleNewFile.name,
+            size: singleNewFile.size,
+            transferDirection: "send",
+            data: singleNewFile,
+          }),
+        ),
+      ]);
+    },
+    //todo queuing of uploads for single file transfer
+    [sendFile],
+  );
+
   const reset = useCallback(() => {
     const ws = wsRef.current;
     wsRef.current = null;
@@ -282,5 +303,5 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
     setError(null);
   }, [updatePhase]);
 
-  return { phase, files, error, connect, sendFile, reset };
+  return { phase, files, error, connect, sendFiles, reset };
 };

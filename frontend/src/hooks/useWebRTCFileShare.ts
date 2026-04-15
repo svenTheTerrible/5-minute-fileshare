@@ -62,6 +62,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
+  const uploadQueueRunning = useRef<boolean>(false);
 
   // Receive-side accumulation buffers
   const rxBufRef = useRef<ArrayBuffer[]>([]);
@@ -112,6 +113,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
         const chunk = ev.data as ArrayBuffer;
         rxBufRef.current.push(chunk);
         rxSizeRef.current += chunk.byteLength;
+        //todo bug, needs last receiving element in list, not last element
         setFiles((current) =>
           current.map((file, index) =>
             current.length - 1 === index
@@ -224,22 +226,18 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
 
   /** Send a file over the open data channel, respecting back-pressure. */
 
-  const sendFile = useCallback(async (file: File) => {
+  const sendFile = useCallback(async (transferFile: TransferFile) => {
+    const file: File | undefined =
+      transferFile.transferDirection === "send"
+        ? (transferFile.data as File)
+        : undefined;
+
+    if (file === undefined) {
+      return;
+    }
+
     const ch = channelRef.current;
     if (!ch || ch.readyState !== "open") return;
-
-    const newId = crypto.randomUUID();
-    setFiles((current) => [
-      ...current,
-      {
-        id: newId,
-        completion: 0,
-        data: file,
-        name: file.name,
-        size: file.size,
-        transferDirection: "send",
-      },
-    ]);
 
     ch.send(JSON.stringify({ name: file.name, size: file.size }));
 
@@ -257,16 +255,30 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
       const percentage = (offset * 100) / file.size;
       setFiles((current) =>
         current.map((file) =>
-          file.id === newId ? { ...file, completion: percentage } : file,
+          file.id === transferFile.id
+            ? { ...file, completion: percentage }
+            : file,
         ),
       );
     }
     setFiles((current) =>
       current.map((file) =>
-        file.id === newId ? { ...file, completion: 100 } : file,
+        file.id === transferFile.id ? { ...file, completion: 100 } : file,
       ),
     );
   }, []);
+
+  const sendIncompleteFiles = useCallback(() => {
+    uploadQueueRunning.current = true;
+    const firstNotSentFile = files.find(
+      (file) => file.transferDirection === "send" && file.completion === 0,
+    );
+    if (firstNotSentFile) {
+      sendFile(firstNotSentFile);
+      sendIncompleteFiles();
+    }
+    uploadQueueRunning.current = false;
+  }, [sendFile, files]);
 
   const sendFiles = useCallback(
     (newFiles: File[]) => {
@@ -283,8 +295,10 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
           }),
         ),
       ]);
+      if (uploadQueueRunning.current === false) {
+        sendIncompleteFiles();
+      }
     },
-    //todo queuing of uploads for single file transfer
     [sendFile],
   );
 

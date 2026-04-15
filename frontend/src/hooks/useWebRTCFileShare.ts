@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Phase } from "../types";
+import { useStateAndRef } from "./useStateAndRef";
 
 const CHUNK_SIZE = 16_384;
 
@@ -54,7 +55,7 @@ export interface UseWebRTCFileShare {
 
 export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [files, setFiles] = useState<TransferFile[]>([]);
+  const [files, setFiles, filesRef] = useStateAndRef<TransferFile[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // phaseRef mirrors phase so WS callbacks don't capture a stale closure value.
@@ -226,7 +227,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
 
   /** Send a file over the open data channel, respecting back-pressure. */
 
-  const sendFile = useCallback(async (transferFile: TransferFile) => {
+  const sendFile = async (transferFile: TransferFile) => {
     const file: File | undefined =
       transferFile.transferDirection === "send"
         ? (transferFile.data as File)
@@ -266,19 +267,28 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
         file.id === transferFile.id ? { ...file, completion: 100 } : file,
       ),
     );
-  }, []);
+  };
 
-  const sendIncompleteFiles = useCallback(() => {
+  const sendIncompleteFiles = async () => {
     uploadQueueRunning.current = true;
-    const firstNotSentFile = files.find(
+    const firstNotSentFile = filesRef.current.find(
       (file) => file.transferDirection === "send" && file.completion === 0,
     );
+    console.log(firstNotSentFile);
+
     if (firstNotSentFile) {
-      sendFile(firstNotSentFile);
-      sendIncompleteFiles();
+      await sendFile(firstNotSentFile);
+      await sendIncompleteFiles();
     }
     uploadQueueRunning.current = false;
-  }, [sendFile, files]);
+  };
+
+  useEffect(() => {
+    if (uploadQueueRunning.current === false) {
+      uploadQueueRunning.current = true;
+      sendIncompleteFiles();
+    }
+  }, [files]);
 
   const sendFiles = useCallback(
     (newFiles: File[]) => {
@@ -295,11 +305,8 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
           }),
         ),
       ]);
-      if (uploadQueueRunning.current === false) {
-        sendIncompleteFiles();
-      }
     },
-    [sendFile],
+    [setFiles],
   );
 
   const reset = useCallback(() => {

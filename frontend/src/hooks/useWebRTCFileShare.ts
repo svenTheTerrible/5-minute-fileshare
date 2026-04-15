@@ -274,21 +274,13 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
     const firstNotSentFile = filesRef.current.find(
       (file) => file.transferDirection === "send" && file.completion === 0,
     );
-    console.log(firstNotSentFile);
 
     if (firstNotSentFile) {
       await sendFile(firstNotSentFile);
-      await sendIncompleteFiles();
+      setTimeout(() => sendIncompleteFiles(), 1000);
     }
     uploadQueueRunning.current = false;
   };
-
-  useEffect(() => {
-    if (uploadQueueRunning.current === false) {
-      uploadQueueRunning.current = true;
-      sendIncompleteFiles();
-    }
-  }, [files]);
 
   const sendFiles = useCallback(
     (newFiles: File[]) => {
@@ -305,6 +297,11 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
           }),
         ),
       ]);
+
+      if (uploadQueueRunning.current === false) {
+        uploadQueueRunning.current = true;
+        sendIncompleteFiles();
+      }
     },
     [setFiles],
   );

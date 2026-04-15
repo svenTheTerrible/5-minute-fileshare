@@ -22,6 +22,8 @@ export const Body: FC<Props> = ({ fileshare }) => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
+  console.log(files);
+
   return (
     <Box {...getRootProps()} sx={{ height: "100%" }}>
       <input {...getInputProps()} />

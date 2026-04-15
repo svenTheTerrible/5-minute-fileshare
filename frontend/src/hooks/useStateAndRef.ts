@@ -11,13 +11,13 @@ export const useStateAndRef = <T>(
     (newValue: T | ((old: T) => T)) => {
       const trueNewValue =
         typeof newValue === "function"
-          ? (newValue as (old: T) => T)(value)
+          ? (newValue as (old: T) => T)(mutableRef.current)
           : (newValue as T);
 
-      setValue(trueNewValue);
       mutableRef.current = trueNewValue;
+      setValue(trueNewValue);
     },
-    [setValue, value],
+    [setValue],
   );
 
   return [value, setValueAndRef, mutableRef];

@@ -1,7 +1,8 @@
 import { useCallback, type FC } from "react";
-import { Box } from "@mui/material";
+import { Box, Grid } from "@mui/material";
 import type { UseWebRTCFileShare } from "../hooks/useWebRTCFileShare";
 import { useDropzone } from "react-dropzone";
+import { FileTile } from "./filetile/FileTile";
 
 function toHumanReadableFileSize(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -22,12 +23,14 @@ export const Body: FC<Props> = ({ fileshare }) => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
-  console.log(files);
-
   return (
-    <Box {...getRootProps()} sx={{ height: "100%" }}>
+    <Box {...getRootProps()} sx={{ height: "100%", width: "100%", p: 3 }}>
       <input {...getInputProps()} />
-      {isDragActive ? "drag active" : "drag not active"}
+      <Grid container spacing={3}>
+        {files.map((file) => (
+          <FileTile key={file.id} file={file} />
+        ))}
+      </Grid>
     </Box>
   );
 };

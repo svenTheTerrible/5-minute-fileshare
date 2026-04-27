@@ -349,7 +349,7 @@ export const ColorBends = ({
   return (
     <div
       ref={containerRef}
-      className={`color-bends-container ${className}`}
+      className={`color-bends-container${className ? ` ${className}` : ""}`}
       style={style}
     />
   );

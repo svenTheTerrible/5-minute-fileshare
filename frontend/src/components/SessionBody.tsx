@@ -22,7 +22,7 @@ export const SessionBody: FC<SessionBodyProps> = ({
         onNewSession={onNewSession}
         sessionId={sessionId}
       />
-      <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ flexGrow: 1, overflowY: "auto", overflowX: "hidden" }}>
         <Body fileshare={fileshare} />
       </Box>
     </Box>

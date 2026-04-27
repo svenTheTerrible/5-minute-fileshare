@@ -22,7 +22,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function getFileIcon(name: string) {
+function getFileIcon(name: string, color: string) {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   const imageExts = ["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp", "ico", "tiff"];
   const videoExts = ["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv"];
@@ -31,7 +31,7 @@ function getFileIcon(name: string) {
   const codeExts = ["js", "ts", "jsx", "tsx", "py", "java", "c", "cpp", "cs", "go", "rs", "rb", "php", "html", "css", "json", "yaml", "yml", "xml", "sh"];
   const textExts = ["txt", "md", "csv", "log", "ini", "cfg", "toml"];
 
-  const sx = { fontSize: 48, opacity: 0.85 };
+  const sx = { fontSize: 48, color, filter: `drop-shadow(0 0 8px ${color})` };
 
   if (ext === "pdf") return <PictureAsPdfIcon sx={sx} />;
   if (imageExts.includes(ext)) return <ImageIcon sx={sx} />;
@@ -44,9 +44,15 @@ function getFileIcon(name: string) {
 }
 
 export const FileTile: FC<FileTileProps> = ({ file }) => {
-  const accentColor = file.transferDirection === "receive" ? "green" : "cyan";
-  const progressColor = file.transferDirection === "receive" ? "success" : "info";
+  const isReceive = file.transferDirection === "receive";
+  const accentColor = isReceive ? "green" : "cyan";
+  const progressColor = isReceive ? "success" : "info";
   const completionPct = Math.round(file.completion * 100);
+
+  // stained-glass pane colour per direction
+  const iconColor = isReceive ? "#86efac" : "#67e8f9";
+  const glassTint = isReceive ? "rgba(34,197,94,0.10)" : "rgba(6,182,212,0.10)";
+  const glassHighlight = isReceive ? "rgba(134,239,172,0.18)" : "rgba(103,232,249,0.18)";
 
   const handleDownload = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -65,7 +71,7 @@ export const FileTile: FC<FileTileProps> = ({ file }) => {
       <ElectricBorder
         color={accentColor}
         speed={1}
-        chaos={0.12}
+        chaos={completionPct < 100 ? 0.12 : 0}
         style={{ borderRadius: 16 }}
       >
         <Box
@@ -75,10 +81,15 @@ export const FileTile: FC<FileTileProps> = ({ file }) => {
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
+            background: `linear-gradient(145deg, ${glassHighlight} 0%, ${glassTint} 100%)`,
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
-            {getFileIcon(file.name)}
+            {getFileIcon(file.name, iconColor)}
           </Box>
 
           <Box>
@@ -86,21 +97,21 @@ export const FileTile: FC<FileTileProps> = ({ file }) => {
               variant="body2"
               noWrap
               title={file.name}
-              sx={{ fontWeight: 600, mb: 0.25 }}
+              sx={{ fontWeight: 600, mb: 0.25, color: "rgba(255,255,255,0.95)" }}
             >
               {file.name}
             </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)" }}>
               {formatSize(file.size)}
             </Typography>
           </Box>
 
           <Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-              <Typography variant="caption" sx={{ opacity: 0.6 }}>
-                {completionPct < 100 ? "Transferring…" : "Done"}
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)" }}>
+                {completionPct < 100 ? (isReceive ? "Receiving…" : "Transferring…") : "Done"}
               </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)" }}>
                 {completionPct}%
               </Typography>
             </Box>
@@ -108,7 +119,7 @@ export const FileTile: FC<FileTileProps> = ({ file }) => {
               variant="determinate"
               value={completionPct}
               color={progressColor}
-              sx={{ borderRadius: 4 }}
+              sx={{ borderRadius: 4, opacity: 0.85 }}
             />
           </Box>
         </Box>

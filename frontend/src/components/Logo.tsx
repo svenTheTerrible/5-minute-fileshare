@@ -12,8 +12,19 @@ export const Logo = ({ height = 36 }: { height?: number }) => {
           <stop offset="0%" stopColor="#facc15" />
           <stop offset="100%" stopColor="#f97316" />
         </linearGradient>
+        <linearGradient id="logo-text" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#c4b5fd" />
+        </linearGradient>
         <filter id="logo-glow">
           <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="logo-text-glow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -28,7 +39,8 @@ export const Logo = ({ height = 36 }: { height?: number }) => {
         fontFamily="'Roboto Mono', 'Courier New', monospace"
         fontSize="24"
         fontWeight="700"
-        fill="currentColor"
+        fill="url(#logo-text)"
+        filter="url(#logo-text-glow)"
         letterSpacing="-0.5"
       >
         RTC
@@ -49,7 +61,8 @@ export const Logo = ({ height = 36 }: { height?: number }) => {
         fontFamily="'Roboto Mono', 'Courier New', monospace"
         fontSize="24"
         fontWeight="700"
-        fill="currentColor"
+        fill="url(#logo-text)"
+        filter="url(#logo-text-glow)"
         letterSpacing="-0.5"
       >
         SHARE

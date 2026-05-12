@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Phase } from "../types";
 import { useStateAndRef } from "./useStateAndRef";
+import { v4 as uuidv4 } from "uuid";
 
 const CHUNK_SIZE = 16_384;
 
@@ -90,20 +91,22 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
 
   const attachChannel = useCallback((ch: RTCDataChannel) => {
     channelRef.current = ch;
-    ch.binaryType = "arraybuffer";
+    ch.binaryType = "a rraybuffer";
     ch.addEventListener("message", (ev: MessageEvent) => {
+      console.log("some message received");
       if (typeof ev.data === "string") {
         const meta = JSON.parse(ev.data as string) as {
           name: string;
           size: number;
         };
+        console.log("file header received", meta);
         rxMetaRef.current = meta;
         rxBufRef.current = [];
         rxSizeRef.current = 0;
         setFiles((current) => [
           ...current,
           {
-            id: crypto.randomUUID(),
+            id: uuidv4(),
             name: meta.name,
             size: meta.size,
             completion: 0,
@@ -156,6 +159,8 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
         try {
           const msg = JSON.parse(ev.data as string) as SignalingMsg;
 
+          console.log("incoming message", msg);
+
           if (msg.type === "waiting") {
             updatePhase("waiting");
           } else if (msg.type === "ready") {
@@ -167,9 +172,11 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
               await pc.setLocalDescription(await pc.createOffer());
               await awaitIceGathering(pc);
               if (ws.readyState === WebSocket.OPEN) {
+                console.log("before sending sdp");
                 ws.send(
                   JSON.stringify({ type: "sdp", payload: pc.localDescription }),
                 );
+                console.log("after sending sdp");
               }
             }
             // responder waits for the 'sdp' message with the offer
@@ -199,7 +206,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
             updatePhase("failed");
           }
         } catch (e) {
-          setError(String(e));
+          console.error(String(e));
           updatePhase("failed");
         }
       })();
@@ -225,48 +232,63 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
     });
   }, [updatePhase, newPC, attachChannel]);
 
-  /** Send a file over the open data channel, respecting back-pressure. */
-
+  // Send a file over the open data channel, respecting back-pressure.
   const sendFile = async (transferFile: TransferFile) => {
     const file: File | undefined =
       transferFile.transferDirection === "send"
         ? (transferFile.data as File)
         : undefined;
 
-    if (file === undefined) {
+    console.log("Attempting to send file:", file?.name);
+    if (!file) return;
+
+    const ch = channelRef.current;
+    if (!ch || ch.readyState !== "open") {
+      console.error(
+        "Cannot send files: RTCDataChannel is not open or connected.",
+      );
       return;
     }
 
-    const ch = channelRef.current;
-    if (!ch || ch.readyState !== "open") return;
+    try {
+      // 1. Send metadata header first
+      ch.send(JSON.stringify({ name: file.name, size: file.size }));
+      console.log("Sent file header successfully");
 
-    ch.send(JSON.stringify({ name: file.name, size: file.size }));
+      const buf = await file.arrayBuffer();
+      let offset = 0;
+      while (offset < buf.byteLength) {
+        // Handle back-pressure by waiting if buffer is too full
+        if (ch.bufferedAmount > 1_048_576 && ch.onbufferedamountlow) {
+          await new Promise<void>((resolve) => {
+            ch.onbufferedamountlow = () => resolve();
+          });
+        }
 
-    const buf = await file.arrayBuffer();
-    let offset = 0;
-    while (offset < buf.byteLength) {
-      if (ch.bufferedAmount > 1_048_576) {
-        await new Promise<void>((resolve) => {
-          ch.bufferedAmountLowThreshold = 524_288;
-          ch.onbufferedamountlow = () => resolve();
-        });
+        // Send the chunk
+        const chunk = buf.slice(offset, offset + CHUNK_SIZE);
+        ch.send(chunk);
+        offset += chunk.byteLength;
+
+        const percentage = (offset * 100) / file.size;
+        setFiles((current) =>
+          current.map((f) =>
+            f.id === transferFile.id
+              ? { ...f, completion: Math.min(100, percentage) }
+              : f,
+          ),
+        );
       }
-      ch.send(buf.slice(offset, offset + CHUNK_SIZE));
-      offset = Math.min(offset + CHUNK_SIZE, buf.byteLength);
-      const percentage = (offset * 100) / file.size;
+
+      // 2. Mark file as completed
       setFiles((current) =>
-        current.map((file) =>
-          file.id === transferFile.id
-            ? { ...file, completion: percentage }
-            : file,
+        current.map((f) =>
+          f.id === transferFile.id ? { ...f, completion: 100 } : f,
         ),
       );
+    } catch (e) {
+      console.error("Error sending file over WebRTC DataChannel: " + String(e));
     }
-    setFiles((current) =>
-      current.map((file) =>
-        file.id === transferFile.id ? { ...file, completion: 100 } : file,
-      ),
-    );
   };
 
   const sendIncompleteFiles = async () => {
@@ -288,7 +310,7 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
         ...current,
         ...newFiles.map(
           (singleNewFile): TransferFile => ({
-            id: crypto.randomUUID(),
+            id: uuidv4(),
             completion: 0,
             name: singleNewFile.name,
             size: singleNewFile.size,

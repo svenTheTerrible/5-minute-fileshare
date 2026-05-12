@@ -40,8 +40,6 @@ export const ConnectButton: FC<ConnectButtonProps> = ({
 
   const renderButtonContent = () => {
     switch (phase) {
-      case "peer_left":
-      case "failed":
       case "connected":
         return (
           <>
@@ -53,6 +51,8 @@ export const ConnectButton: FC<ConnectButtonProps> = ({
       case "connecting":
         return <CircularProgress size={24} />;
       case "waiting":
+      case "peer_left":
+      case "failed":
       case "idle":
         return "connect";
     }

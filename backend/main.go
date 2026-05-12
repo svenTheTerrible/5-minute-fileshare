@@ -7,8 +7,15 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	writeWait  = 10 * time.Second
+	pongWait   = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10 // must be less than pongWait
 )
 
 // uuid4Regex matches UUID version 4 strings (lowercase).
@@ -76,12 +83,19 @@ type Session struct {
 	peers [2]*Client
 }
 
-// join adds c to the first empty slot. Returns the slot index, or -1 if full.
+// join adds c to the first empty or disconnected slot. Returns the slot index, or -1 if full.
 func (s *Session) join(c *Client) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, p := range s.peers {
 		if p == nil {
+			s.peers[i] = c
+			return i
+		}
+		p.mu.Lock()
+		closed := p.closed
+		p.mu.Unlock()
+		if closed {
 			s.peers[i] = c
 			return i
 		}
@@ -96,10 +110,15 @@ func (s *Session) peer(slot int) *Client {
 	return s.peers[1-slot]
 }
 
-// leave removes the client at slot and returns (otherPeer, sessionIsNowEmpty).
-func (s *Session) leave(slot int) (*Client, bool) {
+// leave removes c from slot only if c still owns it (guards against a reconnecting
+// client having already claimed the slot). Returns (otherPeer, sessionIsNowEmpty).
+func (s *Session) leave(c *Client, slot int) (*Client, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.peers[slot] != c {
+		// A new client already took this slot; don't disturb it.
+		return nil, false
+	}
 	s.peers[slot] = nil
 	other := s.peers[1-slot]
 	return other, other == nil
@@ -159,15 +178,39 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Writer goroutine: drain c.send into the WebSocket connection.
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
+	// Writer goroutine: drain c.send and send periodic pings to keep the
+	// connection alive while the initiator waits for a peer to join.
 	go func() {
-		for msg := range c.send {
-			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				log.Printf("write error session=%s: %v", sessionID, err)
-				break
+		ticker := time.NewTicker(pingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case msg, ok := <-c.send:
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if !ok {
+					conn.WriteMessage(websocket.CloseMessage, []byte{})
+					conn.Close()
+					return
+				}
+				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					log.Printf("write error session=%s: %v", sessionID, err)
+					conn.Close()
+					return
+				}
+			case <-ticker.C:
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					conn.Close()
+					return
+				}
 			}
 		}
-		conn.Close()
 	}()
 
 	// Notify both peers when the session becomes full.
@@ -192,8 +235,10 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("disconnect session=%s  addr=%s", sessionID, conn.RemoteAddr())
 
-	peer, empty := sess.leave(slot)
+	// Close first so join() in a racing reconnect can see closed=true and
+	// reclaim this slot instead of getting "session full".
 	c.close()
+	peer, empty := sess.leave(c, slot)
 	if peer != nil {
 		peer.trySend(marshal(Msg{Type: "peer_left"}))
 	}

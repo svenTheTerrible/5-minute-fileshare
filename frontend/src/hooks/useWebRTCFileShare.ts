@@ -4,6 +4,8 @@ import { useStateAndRef } from "./useStateAndRef";
 import { v4 as uuidv4 } from "uuid";
 
 const CHUNK_SIZE = 16_384;
+const BUFFER_HIGH_WATERMARK = 1_048_576; // 1 MB — pause sending above this
+const BUFFER_LOW_WATERMARK = 262_144; // 256 KB — resume sending once drained here
 
 // Vite proxies /ws → http://localhost:8080/ws (including WebSocket upgrades).
 // Override with VITE_SIGNALING_URL in .env.local for production or non-proxied setups.
@@ -91,7 +93,8 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
 
   const attachChannel = useCallback((ch: RTCDataChannel) => {
     channelRef.current = ch;
-    ch.binaryType = "a rraybuffer";
+    ch.binaryType = "arraybuffer";
+    ch.bufferedAmountLowThreshold = BUFFER_LOW_WATERMARK;
     ch.addEventListener("message", (ev: MessageEvent) => {
       console.log("some message received");
       if (typeof ev.data === "string") {
@@ -158,9 +161,6 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
       void (async () => {
         try {
           const msg = JSON.parse(ev.data as string) as SignalingMsg;
-
-          console.log("incoming message", msg);
-
           if (msg.type === "waiting") {
             updatePhase("waiting");
           } else if (msg.type === "ready") {
@@ -258,14 +258,16 @@ export const useWebRTCFileShare = (sessionId: string): UseWebRTCFileShare => {
       const buf = await file.arrayBuffer();
       let offset = 0;
       while (offset < buf.byteLength) {
-        // Handle back-pressure by waiting if buffer is too full
-        if (ch.bufferedAmount > 1_048_576 && ch.onbufferedamountlow) {
+        if (ch.bufferedAmount >= BUFFER_HIGH_WATERMARK) {
           await new Promise<void>((resolve) => {
-            ch.onbufferedamountlow = () => resolve();
+            const onLow = () => {
+              ch.removeEventListener("bufferedamountlow", onLow);
+              resolve();
+            };
+            ch.addEventListener("bufferedamountlow", onLow);
           });
         }
 
-        // Send the chunk
         const chunk = buf.slice(offset, offset + CHUNK_SIZE);
         ch.send(chunk);
         offset += chunk.byteLength;

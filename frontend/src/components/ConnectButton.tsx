@@ -15,7 +15,6 @@ interface ConnectButtonProps {
 export const ConnectButton: FC<ConnectButtonProps> = ({
   fileshare,
   sessionId,
-  onNewSession,
 }) => {
   const { connect, phase } = fileshare;
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);

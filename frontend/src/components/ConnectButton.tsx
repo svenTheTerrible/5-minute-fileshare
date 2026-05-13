@@ -1,9 +1,10 @@
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { UseWebRTCFileShare } from "../hooks/useWebRTCFileShare";
 import { Box, Button, CircularProgress } from "@mui/material";
 import { InvitationDialog } from "./InvitationDialog";
 import "./ConnectButton.css";
+import { useEffectOnce } from "../hooks/useEffectOnce";
 
 interface ConnectButtonProps {
   fileshare: UseWebRTCFileShare;
@@ -19,7 +20,7 @@ export const ConnectButton: FC<ConnectButtonProps> = ({
   const { connect, phase } = fileshare;
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  useEffect(() => {
+  useEffectOnce(() => {
     connect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

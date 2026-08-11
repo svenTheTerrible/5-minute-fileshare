@@ -3,12 +3,13 @@ import {
   DialogTitle,
   DialogContent,
   Box,
-  Button,
   Tooltip,
 } from "@mui/material";
 import { QRCodeSVG } from "qrcode.react";
 import type { FC } from "react";
 import { useState } from "react";
+import { PixelButton } from "../stories/PixelButton";
+import { theme } from "../stories/theme";
 
 interface InvitationDialogProps {
   sessionId: string;
@@ -34,12 +35,10 @@ export const InvitationDialog: FC<InvitationDialogProps> = ({
     <Dialog open={open} onClose={closeDialog}>
       <DialogTitle sx={{ textAlign: "center" }}>Direkt verbinden</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column" }}>
-        <QRCodeSVG value={joinUrl} size={220} />
+        <QRCodeSVG bgColor={theme.bg} value={joinUrl} size={220} />
         <Tooltip title={showCopied ? "Kopiert!" : undefined}>
           <Box sx={{ mt: 2, textAlign: "center" }}>
-            <Button fullWidth variant="contained" onClick={copyJoinUrl}>
-              URL kopieren
-            </Button>
+            <PixelButton onClick={copyJoinUrl}>URL KOPIEREN</PixelButton>
           </Box>
         </Tooltip>
       </DialogContent>

@@ -1,8 +1,11 @@
-import React, { HTMLAttributes } from "react";
+import React from "react";
 import { theme, sx } from "./theme";
 import { usePress } from "./usePress";
 
-interface PixelCardProps extends Omit<HTMLAttributes<"article">, "children"> {
+interface PixelCardProps extends Omit<
+  React.HTMLAttributes<HTMLElement>,
+  "children"
+> {
   media?: React.ReactNode;
   interactive?: boolean;
   children?: React.ReactNode;

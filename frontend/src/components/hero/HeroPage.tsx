@@ -1,5 +1,5 @@
-import { Box, Button, Tooltip } from "@mui/material";
-import React, { FC, useState } from "react";
+import { Box, Tooltip } from "@mui/material";
+import { FC, useState } from "react";
 import { PixelHero } from "../../stories/PixelHero";
 import { HeroPageUploadCard } from "./HeroPageUploadCard";
 import { PixelButton } from "../../stories/PixelButton";

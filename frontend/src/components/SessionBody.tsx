@@ -1,4 +1,4 @@
-import { useEffect, type FC } from "react";
+import { type FC } from "react";
 import { Body } from "./FileShareSession";
 import { Box } from "@mui/material";
 import { useWebRTCFileShare } from "../hooks/useWebRTCFileShare";
@@ -8,13 +8,9 @@ import { useEffectOnce } from "../hooks/useEffectOnce";
 
 interface SessionBodyProps {
   sessionId: string;
-  onNewSession: () => void;
 }
 
-export const SessionBody: FC<SessionBodyProps> = ({
-  onNewSession,
-  sessionId,
-}) => {
+export const SessionBody: FC<SessionBodyProps> = ({ sessionId }) => {
   const fileshare = useWebRTCFileShare(sessionId);
 
   useEffectOnce(() => {

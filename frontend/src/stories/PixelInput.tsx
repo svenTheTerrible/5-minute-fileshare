@@ -90,7 +90,7 @@ export const PixelInput = forwardRef<
       <input
         ref={ref}
         disabled={disabled}
-        style={sx(fieldBase, state, style)}
+        style={sx(fieldBase, state ?? undefined, style)}
         {...focusHandlers}
         {...rest}
       />
@@ -130,7 +130,7 @@ export const PixelTextarea = forwardRef<
         style={sx(
           fieldBase,
           { fontSize: 15, resize: "vertical" },
-          state,
+          state ?? undefined,
           style,
         )}
         {...focusHandlers}

@@ -126,7 +126,7 @@ export const PixelButton = forwardRef<HTMLButtonElement, PixelButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        style={sx(base, off_, style)}
+        style={sx(base, off_ ?? undefined, style)}
         {...handlers}
         {...rest}
       >

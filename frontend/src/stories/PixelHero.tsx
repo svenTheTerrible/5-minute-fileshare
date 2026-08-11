@@ -45,12 +45,14 @@ export const PixelHero = ({
           boxShadow: `8px 8px 0 ${theme.shadow}`,
           padding: "clamp(32px, 5vw, 64px)",
         },
-        grid && {
-          backgroundImage:
-            "radial-gradient(circle at 20% 0%, rgba(0,229,255,0.10), transparent 55%)," +
-            "repeating-linear-gradient(0deg, rgba(34,48,71,0.35) 0 1px, transparent 1px 24px)," +
-            "repeating-linear-gradient(90deg, rgba(34,48,71,0.35) 0 1px, transparent 1px 24px)",
-        },
+        grid
+          ? {
+              backgroundImage:
+                "radial-gradient(circle at 20% 0%, rgba(0,229,255,0.10), transparent 55%)," +
+                "repeating-linear-gradient(0deg, rgba(34,48,71,0.35) 0 1px, transparent 1px 24px)," +
+                "repeating-linear-gradient(90deg, rgba(34,48,71,0.35) 0 1px, transparent 1px 24px)",
+            }
+          : undefined,
         style,
       )}
     >
@@ -244,9 +246,9 @@ export const PixelHeroWindow = ({
         fontSize: 14,
       }}
     >
-      {lines.map((l) => (
+      {lines.map((l, index) => (
         <div
-          key={l.left}
+          key={index}
           style={{
             display: "flex",
             justifyContent: "space-between",

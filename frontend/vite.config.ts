@@ -1,16 +1,16 @@
-import { defineConfig } from 'vite'
-import react, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'
-import checker from 'vite-plugin-checker'
+import { defineConfig } from "vite";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import checker from "vite-plugin-checker";
 
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     port: 5173,
     proxy: {
-      '/ws': {
-        target: 'http://localhost:8080',
+      "/ws": {
+        target: "http://localhost:8080",
         ws: true,
       },
     },
@@ -25,4 +25,4 @@ export default defineConfig({
       overlay: true,
     }),
   ],
-})
+});

@@ -54,6 +54,12 @@ const VARIANTS: Record<string, VariantStyle> = {
     borderColor: theme.accent,
     shadow: "#070b12",
   },
+  outline2: {
+    background: "#131b27",
+    color: theme.accent2,
+    borderColor: theme.accent2,
+    shadow: "#070b12",
+  },
   danger: {
     background: theme.dangerWash,
     color: "#ff6b85",

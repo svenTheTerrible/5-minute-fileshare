@@ -19,7 +19,7 @@ export const SessionBody: FC<SessionBodyProps> = ({ sessionId }) => {
   }, []);
 
   const showHeroPage =
-    fileshare.phase === "waiting" || fileshare.phase === "idle";
+    fileshare.phase === "waiting" || fileshare.phase === "idle" || fileshare.phase === "connecting";
 
   if (showHeroPage) {
     return <HeroPage sessionId={sessionId} />;
